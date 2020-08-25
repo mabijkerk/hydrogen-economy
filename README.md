@@ -4,7 +4,7 @@ The info tab included in the agent-based model gives a short overview of the mod
 
 This model has been adapted slightly from the original model used for the thesis, to make the model more generally applicable. The adaptation has been to rename the state-owned enterprises originally used in the thesis to 'SOE1' and 'SOE2'.
 
-To access the agent-based model, download all the model files included in the 'Hydrogen model' folder.
+To access the agent-based model, download all the model files included in the 'Netlogo model' folder.
 
 MIT License
 
