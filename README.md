@@ -1,6 +1,6 @@
 The agent-based model included in this repository gives a representation of the emergence of a hydrogen economy and allows for the exploration of the effects of state-owned enterprises (SOEs) on that emergence. The model has originally been developed as part of a master's thesis research project for the MSc Complex Systems Engineering and Management at Delft University of Technology. This master's thesis research project was carried out as an exploratory study for EBN B.V.
 
-This info tab included in the agent-based model gives a short overview of the model. Detailed documentation of the model, its workings, and the underlying concepts, can be found in the thesis at https://repository.tudelft.nl/islandora/object/uuid%3Adc14e9df-0740-4078-bb2e-7a9df9a71c16?collection=education
+The info tab included in the agent-based model gives a short overview of the model. Detailed documentation of the model, its workings, and the underlying concepts, can be found in the thesis at https://repository.tudelft.nl/islandora/object/uuid%3Adc14e9df-0740-4078-bb2e-7a9df9a71c16?collection=education
 
 This model has been adapted slightly from the original model used for the thesis, to make the model more generally applicable. The adaptation has been to rename the state-owned enterprises originally used in the thesis to 'SOE1' and 'SOE2'.
 
