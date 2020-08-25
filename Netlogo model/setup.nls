@@ -1,0 +1,663 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Setup Procedure ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to setup
+  clear-all
+  reset-ticks
+
+  if same-seed = true [ random-seed seed ]
+  
+  setup-physical-world
+  setup-externals
+  setup-breeds
+  
+  setup-reporters
+  renew-plots
+  
+  set TIME ticks + 2020
+  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Setup physical-world ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+to setup-physical-world
+  
+  set world-size                        170                                                                                                   ;; in patches
+ 
+  set min-first-sector-distance         1
+  set max-first-sector-distance         10                                                                                                    ;; A26, in km
+  set min-other-sectors-distance        1
+  set max-other-sectors-distance        25                                                                                                    ;; A27, in km
+  
+  ask patches with [(pxcor >= world-size * (-1)) and (pxcor <= world-size) and (pycor >= world-size * (-1)) and (pycor <= world-size)]
+  [ set pcolor 63 ]
+  
+  setup-constants
+  
+end
+
+
+to setup-constants                                                                                                                            ;; constants given in external assumptions tab in Assumptions.xlsx
+  
+  set PJ-per-MWh                        3.6 * ( 10 ^ (- 6))
+  set LHV-hydrogen                      119.96                                                                                                ;; LHV of H2
+  set MJ-per-MWh                        3600
+  set MWh-per-kg                        (LHV-hydrogen / MJ-per-MWh )
+  set LCV-natural-gas                   31.669                                                                                                ;; MJ/m3
+  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Setup externals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+to setup-externals                                                                                                                            ;; input values given in external assumptions tab in Assumptions.xlsx
+  
+  ifelse constant-externals? = true
+  [ set natural-gas-price                     max-natural-gas-price
+    set electricity-price                     max-electricity-price
+    set ETS-price                             max-ETS-price
+    set GO-price                              max-GO-price
+    set CCS-price                             max-CCS-price
+    set electricity-emission-factor           min-electricity-emission-factor
+  ]
+  [ set natural-gas-price                     20
+    set natural-gas-price-list                []
+    let yearly-natural-gas-price              (max-natural-gas-price - natural-gas-price) / 31
+    let year 1
+    while [ year < 35 ]
+    [ let current-value                       20 + year * yearly-natural-gas-price
+      set natural-gas-price-list              lput current-value natural-gas-price-list
+      set year year + 1
+    ]
+    
+    set electricity-price                     30
+    set electricity-price-list                []
+    let yearly-electricity-price              (max-electricity-price - electricity-price) / 31
+    set year 1
+    while [ year < 35 ]
+    [ let current-value                       30 + year * yearly-electricity-price
+      set electricity-price-list              lput current-value electricity-price-list
+      set year year + 1
+    ]
+    
+    set ETS-price                             20
+    set ETS-price-list                        []
+    let yearly-ETS-price                      (max-ETS-price - ETS-price) / 31
+    set year 1
+    while [ year < 35 ]
+    [ let current-value                       20 + year * yearly-ETS-price
+      set ETS-price-list                      lput current-value ETS-price-list
+      set year year + 1
+    ]
+    
+    set GO-price                              2
+    set GO-price-list                         []
+    let yearly-GO-price                       (max-GO-price - GO-price) / 31
+    set year 1
+    while [ year < 35 ]
+    [ let current-value                       2 + year * yearly-GO-price
+      set GO-price-list                       lput current-value GO-price-list
+      set year year + 1
+    ]
+    
+    set CCS-price                             40
+    set CCS-price-list                        []
+    let yearly-CCS-price                      (max-CCS-price - CCS-price) / 31
+    set year 1
+    while [ year < 35 ]
+    [ let current-value                       40 + year * yearly-CCS-price
+      set CCS-price-list                      lput current-value CCS-price-list
+      set year year + 1
+    ]
+    
+    set electricity-emission-factor           0.572
+    set electricity-emission-factor-list      []
+    let yearly-electricity-emission-factor    (min-electricity-emission-factor - electricity-emission-factor) / 31
+    set year 1
+    while [ year < 35 ]
+    [ let current-value                       0.572 + year * yearly-electricity-emission-factor
+      set electricity-emission-factor-list    lput current-value electricity-emission-factor-list
+      set year year + 1
+    ]
+  ]
+  
+  set carbon-price                            ETS-price
+ 
+  setup-technologies
+  setup-economics
+  setup-policies
+  
+end
+
+
+to setup-technologies                                                                                                                         ;; input values given in technologies assumptions tab in Assumptions.xlsx
+  
+  set technology-type                   0
+  set technology-capacity               1
+  set technology-CAPEX                  2                                                                                                     ;; contains the initial CAPEX in the general technologies list and the company-specific CAPEX through learning-by-doing in the company technologies list
+  set technology-OPEX                   3
+  set technology-efficiency             4
+  set technology-lifetime               5
+  set technology-construction-time      6
+  set technology-learning-by-doing      7
+  set technology-TRL                    8                                                                                                     ;; contains the integer TRL, any increase in TRL through external development is therefore monitored seperately
+  set technology-emission-factor        9                                                                                                     ;; is equal to electricity emission factor for electrolysers
+  set technology-emission-factor-0      10
+  set technology-risk                   11                                                                                                    ;; contains the initial risk in the general technologies list and the company-specific risk through setup differences and different knowledge investments in the company technologies list
+  set technology-cumulative-capacity    12                                                                                                    ;; amount of cumulative installed capacity of a certain technology
+  set technology-cumulative-knowledge   13                                                                                                    ;; amount of money investment in the knowledge about a certain technology, is only tracked for company technologies
+  
+  set technology-SMR                    0
+  set technology-ATR                    1
+  set technology-ALK                    2
+  set technology-PEM                    3
+  set technology-SOEC                   4
+  
+  set technology-risk-a                 0.01
+  set technology-risk-b                 0.1
+  let technology-TRL-SMR                9
+  let technology-TRL-ATR                9
+  let technology-TRL-ALK                8
+  let technology-TRL-PEM                7
+  let technology-TRL-SOEC               6
+  let technology-risk-SMR               precision (technology-risk-b - technology-risk-a * technology-TRL-SMR  ) 2
+  let technology-risk-ATR               precision (technology-risk-b - technology-risk-a * technology-TRL-ATR  ) 2
+  let technology-risk-ALK               precision (technology-risk-b - technology-risk-a * technology-TRL-ALK  ) 2
+  let technology-risk-PEM               precision (technology-risk-b - technology-risk-a * technology-TRL-PEM  ) 2
+  let technology-risk-SOEC              precision (technology-risk-b - technology-risk-a * technology-TRL-SOEC ) 2
+  
+  let learning-by-doing-alpha           precision (- log (1 - learning-by-doing-factor) 2) 4
+  
+  set technologies
+  ( list (list "SMR"   323    950464    0.036 0.795 40  1  learning-by-doing-alpha  technology-TRL-SMR   0.27039                      0.88  technology-risk-SMR   0  0)
+         (list "ATR"   822    1.2E6     0.03  0.799 40  1  learning-by-doing-alpha  technology-TRL-ATR   0.16375                      0.92  technology-risk-ATR   0  0)
+         (list "ALK"   100    0.95E6    0.02  0.665 20  1  learning-by-doing-alpha  technology-TRL-ALK   electricity-emission-factor  0.00  technology-risk-ALK   0  0)
+         (list "PEM"   100    1.45E6    0.02  0.58  20  1  learning-by-doing-alpha  technology-TRL-PEM   electricity-emission-factor  0.00  technology-risk-PEM   0  0)
+         (list "SOEC"  100    4.2E6     0.03  0.775 15  1  learning-by-doing-alpha  technology-TRL-SOEC  electricity-emission-factor  0.00  technology-risk-SOEC  0  0)
+    )
+  
+  setup-learning-by-searching
+  
+  set operating-hours                   8000                                                                                                  ;; h/y
+  
+  set pipelines-hydrogen-density        8.15                                                                                                  ;; kg/m3, assumed 10 MPa
+  set pipelines-hydrogen-velocity       15                                                                                                    ;; m/s
+  set pipelines-beta1                   0.0008
+  set pipelines-beta2                   0.92
+  set pipelines-beta3                   250
+  
+  set trucks-capacity                   1000                                                                                                  ;; kg/truck
+  set trucks-CAPEX                      710000                                                                                                ;; €/truck
+  set trucks-OPEX                       0.85                                                                                                  ;; €/km
+  set trucks-speed                      50                                                                                                    ;; km/h
+  
+end
+
+
+to setup-learning-by-searching                                                                                                                ;; input values given in technologies assumptions tab in Assumptions.xlsx
+  
+  let learning-by-searching-2030-ALK   (0.40E6 + random-float (0.85E6 - 0.40E6))
+  let learning-by-searching-2050-ALK   (0.20E6 + random-float (min (list learning-by-searching-2030-ALK  0.70E6) - 0.20E6))
+  let learning-by-searching-2030-PEM   (0.65E6 + random-float (1.45E6 - 0.65E6))
+  let learning-by-searching-2050-PEM   (0.20E6 + random-float (min (list learning-by-searching-2030-PEM  0.90E6) - 0.20E6))
+  let learning-by-searching-2030-SOEC  (0.80E6 + random-float (2.80E6 - 0.80E6))
+  let learning-by-searching-2050-SOEC  (0.50E6 + random-float (min (list learning-by-searching-2030-SOEC 1.00E6) - 0.50E6))
+  
+  ;print learning-by-searching-2030-SOEC
+  ;print learning-by-searching-2050-SOEC
+  
+  let yearly-2030-ALK                  (item technology-CAPEX (item technology-ALK technologies) - learning-by-searching-2030-ALK ) / 10
+  let yearly-2030-PEM                  (item technology-CAPEX (item technology-PEM technologies) - learning-by-searching-2030-PEM ) / 10
+  let yearly-2030-SOEC                 (item technology-CAPEX (item technology-SOEC technologies) - learning-by-searching-2030-SOEC) / 10
+  set learning-by-searching-list-2030  (list 0 0 yearly-2030-ALK yearly-2030-PEM yearly-2030-SOEC)
+  
+  let yearly-2050-ALK                  (learning-by-searching-2030-ALK  - learning-by-searching-2050-ALK ) / 20
+  let yearly-2050-PEM                  (learning-by-searching-2030-PEM  - learning-by-searching-2050-PEM ) / 20
+  let yearly-2050-SOEC                 (learning-by-searching-2030-SOEC - learning-by-searching-2050-SOEC) / 20
+  set learning-by-searching-list-2050  (list 0 0 yearly-2050-ALK yearly-2050-PEM yearly-2050-SOEC)
+  
+  ;print 4.2E6 - yearly-2030-SOEC * 10
+  ;print learning-by-searching-2030-SOEC - yearly-2050-SOEC * 20
+  
+  let efficiency-2030-ALK              (0.665 + random-float (0.71 - 0.665))
+  let efficiency-2050-ALK              (max (list efficiency-2030-ALK  0.70) + random-float (0.80 - max (list efficiency-2030-ALK  0.70)))
+  let efficiency-2030-PEM              (0.63 + random-float (0.68 - 0.63))
+  let efficiency-2050-PEM              (max (list efficiency-2030-PEM  0.67) + random-float (0.74 - max (list efficiency-2030-PEM  0.67)))
+  let efficiency-2030-SOEC             (0.775 + random-float (0.84 - 0.775))
+  let efficiency-2050-SOEC             (max (list efficiency-2030-SOEC 0.775) + random-float (0.90 - max (list efficiency-2030-SOEC 0.775)))
+  
+  ;print efficiency-2030-ALK
+  ;print efficiency-2050-ALK
+  
+  set yearly-2030-ALK                  (efficiency-2030-ALK - item technology-efficiency (item technology-ALK technologies)) / 10
+  set yearly-2030-PEM                  (efficiency-2030-PEM - item technology-efficiency (item technology-PEM technologies)) / 10
+  set yearly-2030-SOEC                 (efficiency-2030-SOEC - item technology-efficiency (item technology-SOEC technologies)) / 10
+  set efficiency-list-2030             (list 0 0 yearly-2030-ALK yearly-2030-PEM yearly-2030-SOEC)
+  
+  set yearly-2050-ALK                  (efficiency-2050-ALK  - efficiency-2030-ALK ) / 20
+  set yearly-2050-PEM                  (efficiency-2050-PEM  - efficiency-2030-PEM ) / 20
+  set yearly-2050-SOEC                 (efficiency-2050-SOEC - efficiency-2030-SOEC) / 20
+  set efficiency-list-2050             (list 0 0 yearly-2050-ALK yearly-2050-PEM yearly-2050-SOEC)
+  
+  ;print 0.665 + yearly-2030-ALK * 10
+  ;print efficiency-2030-ALK + yearly-2050-ALK * 20
+  
+  
+  set yearly-TRL-change                (list 0 0 ((random-float 2 + 1) / 30) ((random-float 2 + 1) / 30) ((random-float 2 + 1) / 30))
+  set initial-TRL-list []
+  let i 0
+  while [i < 5]
+  [ let current-TRL                    item technology-TRL (item i technologies)
+    set initial-TRL-list               lput current-TRL initial-TRL-list
+    set i i + 1
+  ]
+  
+  ;show yearly-TRL-change
+  ;show efficiency-list-2030
+  ;show efficiency-list-2050
+  
+end
+
+
+to setup-economics
+  
+  let standard-shares-1                 (list 1)
+  let standard-shares-2                 (list 0.6 0.4)                                                                                        ;; initiator takes 60% share, the others 40%
+  let standard-shares-3                 (list 0.6 0.2)                                                                                        ;; initiator takes 60% share, the others 40%
+  let standard-shares-4                 (list 0.4 0.2)                                                                                        ;; initiator takes 40% share, the others 20%
+  set standard-shares                   (list standard-shares-1 standard-shares-2 standard-shares-3 standard-shares-4)                        ;; A28 standard share distribution is forced
+  
+  set standard-ROI                      1.03
+  set standard-contract-duration        10
+  
+  set knowledge-costs-factor            5E6
+  
+  set max-participants                  4                                                                                                     ;; A18, the maximum amount of companies participating in an asset is 4
+
+end
+
+
+to setup-policies                                                                                                                             ;; input values given in external assumptions tab in Assumptions.xlsx
+  
+  set policy-public-infrastructure-active?       false
+  set policy-public-infrastructure-first-year    random 31
+  
+  set policy-blending-active?                    false
+  set policy-blending-first-year                 random 31
+  set policy-blending-percentage                 0.17
+  set policy-blending-capacity                   100E9 * policy-blending-percentage * LCV-natural-gas / 8760 / MJ-per-MWh
+  set policy-blending-capacity-available         policy-blending-capacity
+  
+  ;show policy-blending-first-year
+  
+  set policy-carbon-tax-active?                  false
+  set policy-carbon-tax-first-year               1
+  set policy-carbon-tax                          0
+  let policy-carbon-tax-2030-min                 (125 - 30) / 9
+  let policy-carbon-tax-2030-max                 (150 - 30) / 9
+  set policy-carbon-tax-2030                     random-float (policy-carbon-tax-2030-max - policy-carbon-tax-2030-min) + policy-carbon-tax-2030-min
+  set policy-carbon-tax-2050                     random-float (160 - (policy-carbon-tax-2030 * 9 + 30)) / 30
+  
+  ;show policy-carbon-tax-2030 * 9 + 30
+  ;show policy-carbon-tax-2050 * 30 + policy-carbon-tax-2030 * 9 + 30
+  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Setup breeds ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+to setup-breeds
+  
+  setup-sectors
+  setup-companies
+  setup-assets
+  
+end
+
+
+to setup-sectors
+  
+  if experiments-demand? = true                                                                                                               ;; this is only implemented for experimentation
+  [ set max-built-environment-demand     fraction-max-demand * 360
+    set max-energy-demand                fraction-max-demand * 115
+    set max-industry-demand              fraction-max-demand * 1300
+    set max-transport-demand             fraction-max-demand * 125
+    set slope-built-environment-demand   slope-demand
+    set slope-energy-demand              slope-demand
+    set slope-industry-demand            slope-demand
+    set slope-transport-demand           slope-demand
+  ]
+  
+  
+  create-sectors 4
+  (foreach (sort sectors) (list "built-environment" "energy" "industry" "transport")                                                          ;; sectors are ordered and then named alphabetically, this means that sector 0 will always be "built-environment"
+  [ [a b] -> ask a [ set sector-name b] ])
+  
+  ask sectors with [sector-name = "built-environment"]
+  [ setxy                  world-size world-size                                                                                              ;; sectors are placed in the corners of the physical world
+    set color              brown
+    set heading            0
+    set size               20
+    set shape              "house"
+    set label              "built environment"
+    set built-environment  self  
+ 
+    set demand-a           max-built-environment-demand                                                                                       ;; maximum demand is translated to sector-specific parameter
+    set demand-b           slope-built-environment-demand                                                                                     ;; slope demand is translated to sector-specific parameter
+  ]
+  
+  ask sectors with [sector-name = "energy"]
+  [ setxy                  (world-size * (-1)) (world-size * (-1))
+    set color              yellow
+    set heading            0
+    set size               20
+    set shape              "lightning"
+    set label              "energy"
+    set energy             self
+    
+    set demand-a           max-energy-demand
+    set demand-b           slope-energy-demand
+  ]
+  
+  ask sectors with [sector-name = "industry"]
+  [ setxy                  world-size (world-size * (-1))
+    set color              grey
+    set heading            0
+    set size               20
+    set shape              "factory"
+    set label              "industry"
+    set industry           self
+    
+    set demand-a           max-industry-demand
+    set demand-b           slope-industry-demand
+  ]
+  
+  ask sectors with [sector-name = "transport"]
+  [ setxy                  (world-size * (-1)) world-size
+    set color              red
+    set heading            0
+    set size               20
+    set shape              "car"
+    set label              "transport"
+    set transport          self
+    
+    set demand-a           max-transport-demand
+    set demand-b           slope-transport-demand 
+  ]
+  
+  set sector-list (list built-environment energy industry transport)
+  
+  setup-demand
+  
+end
+
+
+to setup-demand
+
+  set initial-demand 1                                                                                                                        ;; A61 to prevent model break initial demand has to be greater than 0, demand is therefore 1 PJ before 2020 starts and is then updated as 2020 starts
+  
+  ask sectors                                                                                                                                 ;; demand is given in PJ
+  [ set demand-0 initial-demand
+    
+    ifelse (demand-0 >= demand-a) or (demand-b <= 0)                                                                                          ;; this ifelse is added to prevent model break when max demand is set to initial demand or when demand slope is set to 0
+    [ set demand initial-demand
+      let year 0
+      set demand-list []
+      while [year < 35]                                                                                                                       ;; list is generated for 35, to facilitate implementation of longer construction time
+      [ set demand-list lput demand demand-list
+        set year year + 1
+      ]
+    ]
+    [ set demand-c (-1 * ( ln (demand-a / demand-0 - 1) / ( -1 * demand-b)))
+      let year 0
+      set demand-list []
+      while [year < 35]
+      [ set demand ( demand-a / (1 + e ^ (-1 * demand-b * ((year + 1) - demand-c ))))                                                         ;; initial demand is the demand before 2020, so for 2019, so during 2020 demand is already higher, which is why i + 1 is used to generate the demand-list for 2020 to 2050
+      set demand-list lput demand demand-list
+      set year year + 1
+      ]
+    ]
+    
+    set demand initial-demand                                                                                                                 ;; sector demand before the model runs is set to initial demand
+    set sector-contracted-production 0
+    set sector-demand-shortage demand - sector-contracted-production                                                                          ;; since there is no shortage yet, the shortage is equal to demand
+    
+  ]
+
+end
+
+
+to setup-companies
+  
+  create-companies number-of-companies
+  
+  ask companies
+  [ set color white
+    set size 15
+    set shape "building store"
+    set heading 0
+    
+    set total-budget                       (companies-total-budget-mean - 0.5 * companies-total-budget-range + random-float companies-total-budget-range) * 1E6
+    if total-budget < 0
+    [ set total-budget                     0
+    ]
+    
+    ;show total-budget
+    
+    set my-production-assets               out-share-neighbors
+    
+    let knowledge-investment-preference    (knowledge-investment-preference-mean - 0.5 * knowledge-investment-preference-range + random-float knowledge-investment-preference-range)   
+    if knowledge-investment-preference < 0
+    [ set knowledge-investment-preference  0
+    ]
+    
+    let individual-knowledge-preference    random-float 1
+    let shared-knowledge-preference        random-float 1
+    let publish-knowledge-preference       0
+    let current-factor                     individual-knowledge-preference + shared-knowledge-preference + publish-knowledge-preference
+    set individual-knowledge-preference    precision ( individual-knowledge-preference * knowledge-investment-preference / current-factor ) 4
+    set shared-knowledge-preference        precision ( shared-knowledge-preference * knowledge-investment-preference / current-factor ) 4
+    set publish-knowledge-preference       precision ( publish-knowledge-preference * knowledge-investment-preference / current-factor ) 4
+    let asset-investment-preference        precision ( 1 - knowledge-investment-preference ) 4
+    
+    set investment-preferences             ( list asset-investment-preference individual-knowledge-preference shared-knowledge-preference publish-knowledge-preference )
+    
+    ;ask companies
+    ;[ show knowledge-investment-preference
+    ;  show asset-investment-preference
+    ;  show investment-preferences
+    ;]
+    
+    set risk-appetite                      random-normal companies-risk-appetite-mean companies-risk-appetite-std
+    if risk-appetite < 0
+    [ set risk-appetite                    0
+    ]
+    
+    let built-environment-market-risk      precision (random-float companies-risk-increase + 0.03) 4
+    let energy-market-risk                 precision (random-float companies-risk-increase + 0.03) 4
+    let industry-market-risk               precision (random-float companies-risk-increase + 0.03) 4
+    let transport-market-risk              precision (random-float companies-risk-increase + 0.03) 4
+    set market-risk-list                   ( list built-environment-market-risk energy-market-risk industry-market-risk transport-market-risk )
+    set initial-market-risk-list           market-risk-list
+    
+    set sector-cumulative-knowledge        ( list 0 0 0 0 )
+    
+    let SMR-technology-risk-change         precision (random-float companies-risk-increase + item technology-risk (item technology-SMR  technologies)) 4
+    let ATR-technology-risk-change         precision (random-float companies-risk-increase + item technology-risk (item technology-ATR  technologies)) 4
+    let ALK-technology-risk-change         precision (random-float companies-risk-increase + item technology-risk (item technology-ALK  technologies)) 4
+    let PEM-technology-risk-change         precision (random-float companies-risk-increase + item technology-risk (item technology-PEM  technologies)) 4
+    let SOEC-technology-risk-change        precision (random-float companies-risk-increase + item technology-risk (item technology-SOEC technologies)) 4
+    set initial-technology-risk-list       (list SMR-technology-risk-change ATR-technology-risk-change ALK-technology-risk-change PEM-technology-risk-change SOEC-technology-risk-change)
+    
+    set company-technologies               technologies                                                                 ;; companies must keep a full list of their version of the technologies
+    set company-available-technologies     ( list "SMR" "ATR" "ALK" "PEM" "SOEC")                                       ;; A11
+    
+    let i 0                                                                                                             ;; update company technologies with company-specific technology-risk
+    while [ i < 5 ]
+    [ let current-technology               item i company-technologies
+      let current-technology-risk          item technology-risk current-technology
+      set current-technology-risk          item i initial-technology-risk-list
+      
+      set current-technology               replace-item technology-risk current-technology current-technology-risk
+      set company-technologies             replace-item i company-technologies current-technology
+      
+      set i i + 1
+    ]
+    
+    set sector-preference                  one-of sector-list                                                           ;; initial sector preference is set random, but is updated before any knowledge investments are done
+    set technology-preference              one-of company-available-technologies                                        ;; A72 initial technology preference is set at random
+  ]
+  
+  
+  let i 0                                                                                                               ;; companies are distributed outside of the physical-world
+  while [i < number-of-companies]
+  [ ask companies
+    [ setxy ( -190 + 20 * i) -190 
+      set i (i + 1)
+    ]
+  ]
+  
+  setup-SOEs
+  
+end
+
+
+to setup-SOEs
+
+  if SOE1-active? = true
+  [ if number-of-companies > 0
+    [ ask one-of companies with [not (self = SOE2)]
+      [ set SOE1 self
+        set color blue
+        set label "SOE1"
+        
+        set total-budget                      1E12     
+        set knowledge-budget-SOE1             5E6
+        
+        set risk-appetite risk-appetite + SOE1-risk-appetite-increase
+        
+        let asset-investment-preference       1
+        let individual-knowledge-preference   individual-knowledge
+        let shared-knowledge-preference       shared-knowledge
+        let publish-knowledge-preference      publish-knowledge
+        set investment-preferences            (list asset-investment-preference individual-knowledge-preference shared-knowledge-preference publish-knowledge-preference )
+        
+      ]
+    ]
+  ]
+  
+  if SOE2-active? = true
+  [ if number-of-companies > 1
+    [ ask one-of companies with [not (self = SOE1)]
+      [ set SOE2 self
+        set color yellow
+        set label "SOE2"
+        
+        let knowledge-investment-preference    precision (random-float (0.03 - 0.01) + 0.01) 4                                                    ;; this procedure is done to generate investment preferences where the knowledge investment is between 1 and 3% of the total budget and is then randomly divided between specific knowledge investments
+        let individual-knowledge-preference    random-float 1
+        let shared-knowledge-preference        random-float 1
+        let publish-knowledge-preference       random-float 1
+        let current-factor                     individual-knowledge-preference + shared-knowledge-preference + publish-knowledge-preference
+        set individual-knowledge-preference    precision ( individual-knowledge-preference * knowledge-investment-preference / current-factor ) 4
+        set shared-knowledge-preference        precision ( shared-knowledge-preference * knowledge-investment-preference / current-factor ) 4
+        set publish-knowledge-preference       precision ( publish-knowledge-preference * knowledge-investment-preference / current-factor ) 4
+        let asset-investment-preference        precision ( 1 - knowledge-investment-preference ) 4
+        
+        set investment-preferences             ( list asset-investment-preference individual-knowledge-preference shared-knowledge-preference publish-knowledge-preference )
+
+      ]
+    ]
+  ]
+  
+end
+
+  
+to setup-assets
+  
+  set-default-shape production-assets "factory"
+  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Setup physical-world ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+to setup-reporters
+  
+  set reporter-production-costs-list                  (list [] [] [] [] [])
+  
+  set reporter-planning-demand-shortage               []
+  set reporter-planning-risk                          []
+  set reporter-planning-capital-intensity             []
+  set reporter-planning-suitable-technology           []
+  set reporter-planning-success                       []
+  
+  set reporter-total-assets                           count production-assets
+  set reporter-total-demand                           sum [demand] of sectors
+  set reporter-total-production-contracted            sum [sector-contracted-production] of sectors
+  set reporter-total-production-capacity              sum [production-asset-capacity] of (production-assets with [production-asset-status != "constructing"]) * operating-hours * PJ-per-MWh
+  set reporter-total-carbon-emissions                 sum [carbon-emissions] of production-assets
+  set reporter-total-cumulative-carbon-emissions      reporter-total-carbon-emissions
+  set reporter-total-carbon-captured                  sum [carbon-captured] of production-assets / 1000
+  set reporter-total-cumulative-carbon-captured       reporter-total-carbon-captured
+  
+  let total-production-MWh                            reporter-total-production-contracted / PJ-per-MWh
+  set reporter-average-hydrogen-price                 sum ([contract-price * contract-quantity / total-production-MWh] of (contracts with [contract-status = "accepted"]))
+  set reporter-average-hydrogen-price                 reporter-average-hydrogen-price * MWh-per-kg
+  
+  ifelse total-production-MWh  > 0
+  [ set reporter-average-hydrogen-carbon-intensity    sum ([carbon-emissions] of production-assets) / total-production-MWh
+  ]
+  [ set reporter-average-hydrogen-carbon-intensity    0
+  ]
+  
+  ifelse SOE1-active? = true
+  [ set reporter-cumulative-investment-SOE1           ([cumulative-asset-investments] of SOE1) / 1E6 + ([cumulative-knowledge-investments] of SOE1) / 1E6
+    set reporter-cumulative-profit-SOE1               ([cumulative-asset-profit] of SOE1) / 1E6
+    ifelse reporter-total-production-contracted > 0
+    [ set reporter-production-participant-SOE1        precision ( ([assets-participating-production] of SOE1) * PJ-per-MWh / reporter-total-production-contracted ) 5
+      set reporter-production-share-SOE1              precision ( ([assets-participating-production-share] of SOE1) * PJ-per-MWh / reporter-total-production-contracted ) 5
+    ]
+    [ set reporter-production-participant-SOE1        0
+      set reporter-production-share-SOE1              0
+    ]
+  ]
+  [ set reporter-cumulative-investment-SOE1           0
+    set reporter-cumulative-profit-SOE1               0
+    set reporter-production-participant-SOE1          0
+    set reporter-production-share-SOE1                0
+  ]
+  
+  let max-cumulative-capacity                         max (map [ i -> item technology-cumulative-capacity i ] technologies)
+  ifelse max-cumulative-capacity = 0
+  [ set reporter-dominant-technology                  "None"
+  ]
+  [ set reporter-dominant-technology                  item technology-type (item 0 (filter [ i -> item technology-cumulative-capacity i = max-cumulative-capacity] technologies))
+  ]
+  
+  ifelse reporter-total-demand = 0
+  [ set reporter-relative-demand-shortage             0
+  ]
+  [ set reporter-relative-demand-shortage             (reporter-total-demand - reporter-total-production-contracted) / reporter-total-demand
+  ]
+  
+  ifelse reporter-total-production-capacity = 0
+  [ set reporter-capacity-factor                      0
+  ] 
+  [ set reporter-capacity-factor                      reporter-total-production-contracted / reporter-total-production-capacity
+  ]
+  
+end

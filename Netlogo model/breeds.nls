@@ -1,0 +1,136 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Breeds ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+breed                  [ sectors            sector           ]
+breed                  [ companies          company          ]
+breed                  [ production-assets  production-asset ]
+undirected-link-breed  [ contracts          contract         ]
+directed-link-breed    [ shares             share            ]
+
+sectors-own [
+  
+  demand                                  ;; hydrogen demand of a sector at a specific time
+  demand-list                             ;; time series of hydrogen demand of a sector from 2020 to 2050
+  demand-0                                ;; initial demand, before 2020 starts
+  demand-a                                ;; maximum demand at top of the demand curve
+  demand-b                                ;; slope of the demand curve
+  demand-c                                ;; variable used to shift demand curve horizontally to correctly position initial demand
+  
+  sector-name                             ;; sector name e.g. "built-environment"
+  sector-contracted-production            ;; total hydrogen quantity that is supplied to a sector based on the accepted contracts
+  sector-demand-shortage                  ;; difference between contracted hydrogen production and demand
+  
+]
+
+companies-own [
+  
+  my-production-assets                    ;; agentset of all the production assets a company owns
+  assets-participating
+  assets-participating-production
+  assets-participating-production-share
+  
+  company-technologies                    ;; company-specific list containing all technologies and their characteristics
+  company-available-technologies          ;; company-specific list stating which of the technologies are available to the company
+  
+  risk-appetite                           ;; amount of total risk a company is willing to take when investing in an asset
+  
+  total-budget                            ;; budget of a company
+  investment-budget                       ;; budget that a company expects to be available for investment in the coming year
+  investment-preferences                  ;; list containing a pre-set distribution of the investment budget over specific types of investments
+  asset-investment-budget                 ;; budget available for investment in assets
+  asset-investment-budget-reserved        ;; part of the asset investment budget which during the planning phase is already reserved for succesfully planned assts
+  individual-knowledge-budget             ;; budget available for investment in individual knowledge projects
+  shared-knowledge-budget                 ;; budget available for investment in shared knowledge projects
+  publish-knowledge-budget                ;; budget available for investment in knowledge projects which are published
+  
+  cumulative-asset-investments
+  cumulative-knowledge-investments
+  cumulative-asset-profit
+  
+  sector-preference                       ;; preferred sector to invest in for knowledge projects
+  sector-cumulative-knowledge             ;; ordered list containing the total budget a company has invested for each sector in knowledge projects so far
+  market-risk-list                        ;; ordered list containing the market risk assessment of a company for each sector
+  initial-market-risk-list                ;; ordered list containing the market risk assessment of a company for each sector at setup, this is used to scale the effect of knowledge investments
+  technology-preference                   ;; preferred technology to invest in for knowledge projects
+  initial-technology-risk-list            ;; ordered list containing the technology risk assessment of a company for each avalable technology at setup, this is used to scale the effect of knowledge investments
+  
+  expected-sector-shortages               ;; ordered list containing the expected shortages in demand for each sector
+  
+]
+
+production-assets-own [
+  
+  production-asset-type                   ;; name of the production method used in the asset
+  energy-source
+  production-asset-status                 ;; variable indicating whether the asset is planned, constructing, idle or operating
+  production-asset-sustainable?           ;; variable indicating whether the hydrogen produced by the asset can be considered sustainable or not
+  production-asset-age
+  
+  production-asset-hydrogen-price         ;; price which is paid for hydrogen produced by the asset in €/MWh
+  
+  production-asset-capacity
+  production-asset-total-CAPEX            ;; total CAPEX which consists of transport and production CAPEX, in €
+  production-asset-fixed-OPEX             ;; fixed OPEX that has to be spend independent from the status of the asset, in €/y
+  production-asset-efficiency
+  production-asset-lifetime
+  production-asset-construction-time
+  production-asset-TRL
+  production-asset-emission-factor        ;; amount of CO2 emitted per MWh of hydrogen produced in the case of natural-gas based production, and per MWh of electricity used in the case of electrolysers
+  production-asset-emission-factor-0
+  
+  production-asset-market-risk            ;; minimum market risk of my-participants for the first sector the asset has been connected to
+  production-asset-technology-risk        ;; minimum technology risk of my-participants for the technology type used in the asset
+  
+  production-asset-ROI
+  production-asset-revenue
+  energy-source-OPEX                      ;; in €/MWh
+  sustainability-OPEX                     ;; in €/MWh
+  transport-OPEX                          ;; in €/MWh
+  production-this-year                    ;; in MWh
+  production-asset-total-OPEX             ;; total OPEX in a given year, which consists of fixed OPEX, energy source OPEX, sustainability OPEX and transport OPEX, in €
+  production-asset-profit
+  production-asset-cumulative-profit
+  
+  carbon-emissions                        ;; total amount of CO2 emitted due to the production of hydrogen in a given year, in ton CO2
+  carbon-captured                         ;; total amount of CO2 captured by CCS, in ton CO2, only available for natural-gas-based production
+  green-electricity-consumption
+  
+  my-participants                         ;; agentset containing all the companies participating in the asset
+  my-production-technology                ;; asset-specific list containing its actual technology characteristics
+  my-expected-production-technology       ;; asset-specific list containing its expected technology characteristics
+  my-sectors                              ;; agentset containing the sectors the asset has been connected to
+  
+  years-idle                              ;; keeps track of the number of years that an asset has not been operational
+  
+  construction-first-year                 ;; first year of construction of the asset
+  construction-last-year                  ;; last year of construction of the asset, after this year the asset will be set to the idle state, awaiting contract acceptance
+  
+]
+
+contracts-own [
+  
+  contract-status                         ;; variable indicating whether the asset is planned, constructing, idle or accepted
+  contract-price                          ;; in €/MWh
+  contract-quantity                       ;; in MWh/y
+  contract-energy-price                   ;; price for which the asset buys its energy source for the duration of an accepted contract in €/MWh
+  contract-distance                       ;; distance between end1 of the contract, the demand sector, and end2 the asset
+  
+  contract-first-year                     ;; the year that the contract is first offered to a demand sector
+  contract-last-year                      ;; the year after which the contract expires
+  contract-duration                       ;; normally the duration of a contract is the standard-contract-duration, however if the asset's end of lifetime comes before that, then the duration needs to be set accordingly
+ 
+  contract-transport-OPEX
+  contract-transport-CAPEX
+  
+  my-transport-technology                 ;; because the contracts are only set once per production asset, during set-sectors, the contracts in this case can also function as the physical flows
+  
+]
+
+shares-own [
+  
+  share-percentage                        ;; indicates which for which percentage a certain asset is owned by a company
+  share-profit
+  
+]
+

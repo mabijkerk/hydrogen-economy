@@ -1,0 +1,145 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Globals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+globals [
+  
+  TIME
+  
+  world-size
+  initial-demand
+  min-first-sector-distance
+  max-first-sector-distance
+  min-other-sectors-distance
+  max-other-sectors-distance
+  
+  sector-list
+  built-environment
+  energy
+  industry
+  transport
+  
+  SOE1
+  knowledge-budget-SOE1
+  SOE2
+  
+  natural-gas-price
+  natural-gas-price-list
+  electricity-price
+  electricity-price-list
+  ETS-price
+  ETS-price-list
+  carbon-price
+  GO-price
+  GO-price-list
+  CCS-price
+  CCS-price-list
+  electricity-emission-factor
+  electricity-emission-factor-list
+  
+  technologies                                  ;; list of lists, constitutes a table containing all the technologies in the columns and their characteristics in the rows
+  
+  technology-SMR
+  technology-ATR
+  technology-ALK
+  technology-PEM
+  technology-SOEC
+  ;technology-pipelines
+  ;technology-trucks
+  
+  technology-index
+  technology-type                              ;; string denoting the abbreviation of the technology e.g. "SMR"
+  technology-capacity                          ;; integer denoting the output capacity in MW i.e. the amount of hydrogen that can be produced
+  technology-CAPEX                             ;; float denoting the investment costs of an asset in €/MW
+  technology-OPEX
+  technology-efficiency
+  technology-lifetime
+  technology-construction-time                 ;; A60
+  technology-learning-by-doing
+  technology-learning-by-searching
+  technology-TRL
+  technology-emission-factor
+  technology-emission-factor-0
+  technology-risk
+  technology-cumulative-capacity
+  technology-cumulative-knowledge
+  
+  pipelines-beta1
+  pipelines-beta2
+  pipelines-beta3
+  pipelines-hydrogen-density
+  pipelines-hydrogen-velocity
+  trucks-capacity
+  trucks-CAPEX
+  trucks-OPEX
+  trucks-speed
+  
+  learning-by-searching-list-2030
+  learning-by-searching-list-2050
+  efficiency-list-2030
+  efficiency-list-2050
+  yearly-TRL-change
+  initial-TRL-list
+  
+  technology-risk-a
+  technology-risk-b
+  
+  standard-shares
+  standard-ROI
+  standard-contract-duration
+  knowledge-costs-factor
+  
+  max-participants
+  
+  PJ-per-MWh
+  MJ-per-MWh
+  MWh-per-kg
+  LHV-hydrogen
+  LCV-natural-gas
+  
+  operating-hours
+  
+  policy-public-infrastructure-active?
+  policy-public-infrastructure-first-year
+  policy-blending-active?
+  policy-blending-first-year
+  policy-blending-percentage
+  policy-blending-capacity
+  policy-blending-capacity-available  
+  policy-carbon-tax-active?
+  policy-carbon-tax-first-year
+  policy-carbon-tax
+  policy-carbon-tax-2030
+  policy-carbon-tax-2050
+  
+  reporter-average-hydrogen-carbon-intensity
+  reporter-average-hydrogen-price
+  reporter-production-costs-SMR
+  reporter-production-costs-ATR
+  reporter-production-costs-ALK
+  reporter-production-costs-PEM
+  reporter-production-costs-SOEC
+  reporter-production-costs-list
+  reporter-total-assets
+  reporter-total-demand
+  reporter-total-production-contracted
+  reporter-total-production-capacity
+  reporter-total-carbon-emissions
+  reporter-total-cumulative-carbon-emissions
+  reporter-total-carbon-captured
+  reporter-total-cumulative-carbon-captured
+  reporter-total-green-electricity-consumption
+  reporter-cumulative-investment-SOE1
+  reporter-cumulative-profit-SOE1
+  reporter-production-participant-SOE1
+  reporter-production-share-SOE1
+  reporter-relative-demand-shortage
+  reporter-capacity-factor
+  reporter-dominant-technology
+  reporter-planning-demand-shortage
+  reporter-planning-risk
+  reporter-planning-capital-intensity
+  reporter-planning-suitable-technology
+  reporter-planning-success
+  
+]
